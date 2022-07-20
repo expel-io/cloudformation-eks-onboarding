@@ -1,0 +1,313 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "ExpelCustomerOrganizationGUID": {
+            "Type": "String",
+            "Description": "Enter the unique organization GUID assigned to you by Expel. You can find it in your browser URL after navigating to Settings > My Organization in Workbench."
+        },
+        "ExpelAWSAccountARN": {
+            "Type": "String",
+            "Default": "arn:aws:iam::012205512454:user/ExpelCloudService",
+            "Description": "Expel's AWS Account ARN to allow assuming role to gain EKS access."
+        },
+        "ExpelAssumeRoleSessionName": {
+            "Type": "String",
+            "Default": "ExpelEKSServiceSession",
+            "Description": "The session name Expel will use when authenticating."
+        },
+        "EKSLogGroupName": {
+            "Type": "String",
+            "Description": "The EKS log group name to integrate with Expel Workbench."
+        },
+        "StreamRetentionHours": {
+            "Type": "Number",
+            "Default": 24,
+            "Description": "The number of hours data will be retained in the stream. See: https://docs.aws.amazon.com/streams/latest/dev/kinesis-extended-retention.html"
+        }
+    },
+    "Metadata": {
+        "AWS::CloudFormation::Designer": {
+            "9be110ad-096c-4edd-b04e-c446357ac7bb": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 270,
+                    "y": 104
+                },
+                "z": 0,
+                "embeds": []
+            },
+            "d12087b6-a059-47f0-9591-734c565d39f1": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 270,
+                    "y": 220
+                },
+                "z": 0,
+                "embeds": []
+            },
+            "09000284-8452-429f-994e-f00ed3aa5c4a": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 450,
+                    "y": 100
+                },
+                "z": 0,
+                "embeds": [],
+                "isassociatedwith": [
+                    "78ba912f-20c5-4913-a00e-111cac921240"
+                ]
+            },
+            "773733a1-60ab-4a96-878e-80cb8cbc890d": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 450,
+                    "y": 220
+                },
+                "z": 0,
+                "embeds": [],
+                "isassociatedwith": [
+                    "9ca0c139-cccf-4202-80c8-67f76d2cfe31"
+                ]
+            },
+            "9ca0c139-cccf-4202-80c8-67f76d2cfe31": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 660,
+                    "y": 220
+                },
+                "z": 0,
+                "embeds": []
+            },
+            "78ba912f-20c5-4913-a00e-111cac921240": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 660,
+                    "y": 100
+                },
+                "z": 0,
+                "embeds": []
+            }
+        }
+    },
+    "Resources": {
+        "EKSLogStream": {
+            "Type": "AWS::Kinesis::Stream",
+            "Properties": {
+                "Name": "ExpelEKSLogStream",
+                "RetentionPeriodHours": {
+                    "Ref": "StreamRetentionHours"
+                },
+                "StreamModeDetails": {
+                    "StreamMode": "ON_DEMAND"
+                },
+                "StreamEncryption": {
+                    "EncryptionType": "KMS",
+                    "KeyId": "alias/aws/kinesis"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "9be110ad-096c-4edd-b04e-c446357ac7bb"
+                }
+            }
+        },
+        "SubscriptionFilter": {
+            "Type": "AWS::Logs::SubscriptionFilter",
+            "Properties": {
+                "LogGroupName": {
+                    "Ref": "EKSLogGroupName"
+                },
+                "DestinationArn": {
+                    "Fn::GetAtt": [
+                        "EKSLogStream",
+                        "Arn"
+                    ]
+                },
+                "FilterPattern": "",
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "CloudWatchAssumeRole",
+                        "Arn"
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "d12087b6-a059-47f0-9591-734c565d39f1"
+                }
+            },
+            "DependsOn": [
+                "EKSLogStream",
+                "CloudWatchAssumeRole"
+            ]
+        },
+        "ExpelEKSAssumeRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "ExpelEKSServiceAssumeRole",
+                "Description": "Used by Expel to monitor EKS clusters.",
+                "ManagedPolicyArns": [
+                    {
+                        "Ref": "ExpelEKSAssumeRolePolicy"
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2008-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": {
+                                    "Ref": "ExpelAWSAccountARN"
+                                }
+                            },
+                            "Action": "sts:AssumeRole",
+                            "Condition": {
+                                "StringEquals": {
+                                    "sts:ExternalId": {
+                                        "Ref": "ExpelCustomerOrganizationGUID"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "09000284-8452-429f-994e-f00ed3aa5c4a"
+                }
+            }
+        },
+        "CloudWatchAssumeRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "EKSLogsCloudWatchAssumeRole",
+                "Description": "Used by CloudWatch Logs to deliver EKS logs to Kinesis.",
+                "ManagedPolicyArns": [
+                    {
+                        "Ref": "EKSProducerPolicy"
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2008-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": {
+                                    "Fn::Sub": "logs.${AWS::Region}.amazonaws.com"
+                                }
+                            },
+                            "Action": "sts:AssumeRole",
+                            "Condition": {
+                                "StringLike": {
+                                    "aws:SourceArn": {
+                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "773733a1-60ab-4a96-878e-80cb8cbc890d"
+                }
+            }
+        },
+        "EKSProducerPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "EKSProducerPolicy",
+                "Description": "Used by Cloudwatch Logs to deliver logs to Kinesis.",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "kinesis:PutRecord",
+                            "Resource": {
+                                "Fn::GetAtt": [
+                                    "EKSLogStream",
+                                    "Arn"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "9ca0c139-cccf-4202-80c8-67f76d2cfe31"
+                }
+            }
+        },
+        "ExpelEKSAssumeRolePolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "ManagedPolicyName": "ExpelEKSAssumeRolePolicy",
+                "Description": "Used by Expel to monitor EKS.",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "kinesis:DescribeLimits",
+                                "kinesis:DescribeStream",
+                                "kinesis:DescribeStreamSummary",
+                                "kinesis:GetRecords",
+                                "kinesis:GetShardIterator",
+                                "kinesis:ListShards"
+                            ],
+                            "Resource": {
+                                "Fn::GetAtt": [
+                                    "EKSLogStream",
+                                    "Arn"
+                                ]
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "eks:AccessKubernetesApi",
+                                "eks:DescribeCluster",
+                                "eks:DescribeNodegroup",
+                                "eks:ListClusters",
+                                "eks:ListNodegroups",
+                                "eks:ListUpdates",
+                                "sts:GetCallerIdentity"
+                            ],
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "78ba912f-20c5-4913-a00e-111cac921240"
+                }
+            }
+        }
+    }
+}
