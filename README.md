@@ -22,7 +22,7 @@ This Cloudformation template accepts the following parameters:
 Launching a stack with this template will create the following resources:
 
 | Resource Type | Name | Description |
-| --- | --- |
+| --- | --- | --- |
 | AWS::Kinesis::Stream | ExpelEKSLogStream | A Kinesis stream Expel will consume EKS logs from |
 | AWS::Logs::SubscriptionFilter | N/A | A subscription filter that sends logs from CloudWatch to the Kinesis stream |
 | AWS::IAM::Role | ExpelEKSServiceAssumeRole | An IAM role Expel will use to consume EKS logs |
