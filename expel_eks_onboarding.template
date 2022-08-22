@@ -296,7 +296,8 @@
                                 "eks:ListClusters",
                                 "eks:ListNodegroups",
                                 "eks:ListUpdates",
-                                "sts:GetCallerIdentity"
+                                "sts:GetCallerIdentity",
+                                "ec2:DescribeRegions"
                             ],
                             "Resource": "*"
                         }
